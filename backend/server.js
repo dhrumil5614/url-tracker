@@ -8,19 +8,19 @@ const analyticsRouter = require('./routes/analytics');
 const { generalLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 /**
  * Database Connection
  */
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/link-tracker')
-.then(() => {
-  console.log('✓ Connected to MongoDB');
-})
-.catch((error) => {
-  console.error('✗ MongoDB connection error:', error);
-  process.exit(1);
-});
+  .then(() => {
+    console.log('✓ Connected to MongoDB');
+  })
+  .catch((error) => {
+    console.error('✗ MongoDB connection error:', error);
+    process.exit(1);
+  });
 
 // Handle MongoDB connection errors after initial connection
 mongoose.connection.on('error', (error) => {
