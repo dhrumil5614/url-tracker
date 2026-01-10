@@ -13,10 +13,7 @@ const PORT = process.env.PORT || 5000;
 /**
  * Database Connection
  */
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/link-tracker', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/link-tracker')
 .then(() => {
   console.log('✓ Connected to MongoDB');
 })
@@ -78,12 +75,81 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API routes
+// API routes - mounted at /api/links for CRUD operations
 app.use('/api/links', linksRouter);
 app.use('/api/analytics', analyticsRouter);
 
-// Redirect route (must come after API routes to avoid conflicts)
-app.use('/', linksRouter);
+// Root redirect route - must come last to catch short codes
+// This handles GET /:shortCode for redirects
+const Link = require('./models/Link');
+const Click = require('./models/Click');
+const { parseUserAgent, getLocationFromIP, getClientIP } = require('./utils/userAgentParser');
+const { redirectLimiter } = require('./middleware/rateLimiter');
+
+app.get('/:shortCode', redirectLimiter, async (req, res, next) => {
+  try {
+    const { shortCode } = req.params;
+    const source = req.query.source || 'direct';
+
+    // Skip if it looks like a system route
+    if (shortCode === 'health' || shortCode === 'api' || shortCode === 'favicon.ico') {
+      return next();
+    }
+
+    // Find the link
+    const link = await Link.findOne({ shortCode });
+
+    if (!link) {
+      return res.status(404).send('Link not found');
+    }
+
+    // Check if link is active
+    if (!link.isActive) {
+      return res.status(410).send('This link has been disabled');
+    }
+
+    // Check if link is expired
+    if (link.isExpired()) {
+      return res.status(410).send('This link has expired');
+    }
+
+    // Parse user agent and get location
+    const userAgentString = req.headers['user-agent'] || '';
+    const deviceInfo = parseUserAgent(userAgentString);
+    const ipAddress = getClientIP(req);
+    const locationInfo = getLocationFromIP(ipAddress);
+
+    // Create click record for analytics
+    const clickData = {
+      shortCode: link.shortCode,
+      source,
+      campaign: link.campaign,
+      clickedAt: new Date(),
+      ipAddress,
+      userAgent: userAgentString,
+      referrer: req.headers.referer || req.headers.referrer || '',
+      ...deviceInfo,
+      ...locationInfo,
+      utmSource: link.utmSource,
+      utmMedium: link.utmMedium,
+      utmCampaign: link.utmCampaign,
+      utmContent: link.utmContent
+    };
+
+    // Save click record and increment click count (non-blocking)
+    Promise.all([
+      Click.create(clickData),
+      Link.updateOne({ shortCode }, { $inc: { clicks: 1 } })
+    ]).catch(err => console.error('Error saving click data:', err));
+
+    // Redirect immediately (don't wait for database operations)
+    res.redirect(302, link.targetUrl);
+
+  } catch (error) {
+    console.error('Error processing redirect:', error);
+    next();
+  }
+});
 
 // 404 handler
 app.use((req, res) => {

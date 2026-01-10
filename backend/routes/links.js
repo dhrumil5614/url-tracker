@@ -2,14 +2,13 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const Link = require('../models/Link');
-const Click = require('../models/Click');
 const { generateShortCode, isValidShortCode } = require('../utils/shortCodeGenerator');
-const { parseUserAgent, getLocationFromIP, getClientIP } = require('../utils/userAgentParser');
-const { createLinkLimiter, redirectLimiter } = require('../middleware/rateLimiter');
+const { createLinkLimiter } = require('../middleware/rateLimiter');
 
 /**
- * POST /api/links
+ * POST /
  * Create a new shortened link with tracking capabilities
+ * When mounted at /api/links, this becomes POST /api/links
  */
 router.post('/',
   createLinkLimiter,
@@ -145,77 +144,16 @@ router.post('/',
 );
 
 /**
- * GET /:shortCode
- * Redirect to target URL and track analytics
+ * NOTE: The redirect route (GET /:shortCode) has been moved to server.js
+ * to avoid routing conflicts when this router is mounted at both /api/links and /
  */
-router.get('/:shortCode',
-  redirectLimiter,
-  async (req, res) => {
-    try {
-      const { shortCode } = req.params;
-      const source = req.query.source || 'direct';
-
-      // Find the link
-      const link = await Link.findOne({ shortCode });
-
-      if (!link) {
-        return res.status(404).send('Link not found');
-      }
-
-      // Check if link is active
-      if (!link.isActive) {
-        return res.status(410).send('This link has been disabled');
-      }
-
-      // Check if link is expired
-      if (link.isExpired()) {
-        return res.status(410).send('This link has expired');
-      }
-
-      // Parse user agent and get location
-      const userAgentString = req.headers['user-agent'] || '';
-      const deviceInfo = parseUserAgent(userAgentString);
-      const ipAddress = getClientIP(req);
-      const locationInfo = getLocationFromIP(ipAddress);
-
-      // Create click record for analytics
-      const clickData = {
-        shortCode: link.shortCode,
-        source,
-        campaign: link.campaign,
-        clickedAt: new Date(),
-        ipAddress,
-        userAgent: userAgentString,
-        referrer: req.headers.referer || req.headers.referrer || '',
-        ...deviceInfo,
-        ...locationInfo,
-        utmSource: link.utmSource,
-        utmMedium: link.utmMedium,
-        utmCampaign: link.utmCampaign,
-        utmContent: link.utmContent
-      };
-
-      // Save click record and increment click count (non-blocking)
-      Promise.all([
-        Click.create(clickData),
-        Link.updateOne({ shortCode }, { $inc: { clicks: 1 } })
-      ]).catch(err => console.error('Error saving click data:', err));
-
-      // Redirect immediately (don't wait for database operations)
-      res.redirect(302, link.targetUrl);
-
-    } catch (error) {
-      console.error('Error processing redirect:', error);
-      res.status(500).send('Internal server error');
-    }
-  }
-);
 
 /**
- * GET /api/links
+ * GET /
  * Get all links (with pagination)
+ * When mounted at /api/links, this becomes GET /api/links
  */
-router.get('/api/links', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
@@ -250,10 +188,11 @@ router.get('/api/links', async (req, res) => {
 });
 
 /**
- * DELETE /api/links/:shortCode
+ * DELETE /:shortCode
  * Delete a link
+ * When mounted at /api/links, this becomes DELETE /api/links/:shortCode
  */
-router.delete('/api/links/:shortCode', async (req, res) => {
+router.delete('/:shortCode', async (req, res) => {
   try {
     const { shortCode } = req.params;
 
