@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config(); // Load environment variables
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -84,12 +84,18 @@ app.use('/api/analytics', analyticsRouter);
 const Link = require('./models/Link');
 const Click = require('./models/Click');
 const { parseUserAgent, getLocationFromIP, getClientIP } = require('./utils/userAgentParser');
+const { detectSource } = require('./utils/sourceDetector');
 const { redirectLimiter } = require('./middleware/rateLimiter');
 
 app.get('/:shortCode', redirectLimiter, async (req, res, next) => {
   try {
     const { shortCode } = req.params;
-    const source = req.query.source || 'direct';
+
+    // Determine source: Query param > Referer header > 'direct'
+    let source = req.query.source;
+    if (!source) {
+      source = detectSource(req.headers.referer || req.headers.referrer) || 'direct';
+    }
 
     // Skip if it looks like a system route
     if (shortCode === 'health' || shortCode === 'api' || shortCode === 'favicon.ico') {
