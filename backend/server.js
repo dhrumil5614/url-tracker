@@ -84,12 +84,20 @@ app.use('/api/analytics', analyticsRouter);
 const Link = require('./models/Link');
 const Click = require('./models/Click');
 const { parseUserAgent, getLocationFromIP, getClientIP } = require('./utils/userAgentParser');
+const { detectPlatform } = require('./utils/platformDetector');
 const { redirectLimiter } = require('./middleware/rateLimiter');
 
 app.get('/:shortCode', redirectLimiter, async (req, res, next) => {
   try {
     const { shortCode } = req.params;
-    const source = req.query.source || 'direct';
+
+    // Automatic platform detection from HTTP headers
+    const referer = req.headers.referer || req.headers.referrer || '';
+    const userAgent = req.headers['user-agent'] || '';
+    const manualSource = req.query.source || req.query.utm_source || '';
+
+    // Detect platform automatically (supports manual override via query params)
+    const source = detectPlatform(referer, userAgent, manualSource);
 
     // Skip if it looks like a system route
     if (shortCode === 'health' || shortCode === 'api' || shortCode === 'favicon.ico') {

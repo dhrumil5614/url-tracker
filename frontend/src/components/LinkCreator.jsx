@@ -233,52 +233,96 @@ const LinkCreator = ({ onLinkCreated }) => {
                 Link Created Successfully!
               </h3>
               <p className="text-sm text-green-600 dark:text-green-400">
-                Your tracked link is ready to use
+                {createdLink.message || 'Your tracked link is ready to use'}
               </p>
             </div>
           </div>
 
-          {/* Platform-specific URLs */}
-          <div className="space-y-3">
-            {Object.entries(createdLink.platformUrls).map(([platform, url]) => (
-              <div key={platform} className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 capitalize">
-                    {platform}
-                  </span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => copyToClipboard(url, platform)}
-                      className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 flex items-center gap-1"
-                    >
-                      {copiedUrl === platform ? (
-                        <>
-                          <CheckCircle className="w-4 h-4" />
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-4 h-4" />
-                          Copy
-                        </>
-                      )}
-                    </button>
-                    <a
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-gray-600 hover:text-gray-700 dark:text-gray-400 flex items-center gap-1"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      Open
-                    </a>
-                  </div>
-                </div>
-                <code className="text-xs text-gray-600 dark:text-gray-400 break-all">
-                  {url}
-                </code>
+          {/* Single Universal Link */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Your Tracked Link
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => copyToClipboard(createdLink.shortUrl, 'link')}
+                  className="btn-primary text-sm flex items-center gap-2"
+                >
+                  {copiedUrl === 'link' ? (
+                    <>
+                      <CheckCircle className="w-4 h-4" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      Copy Link
+                    </>
+                  )}
+                </button>
+                <a
+                  href={createdLink.shortUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-secondary text-sm flex items-center gap-2"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Test
+                </a>
               </div>
-            ))}
+            </div>
+            <div className="bg-gray-100 dark:bg-gray-900 rounded p-3 mb-3">
+              <code className="text-sm text-gray-800 dark:text-gray-200 break-all font-mono">
+                {createdLink.shortUrl}
+              </code>
+            </div>
+
+            {/* Platform Auto-Detection Info */}
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <LinkIcon className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-blue-800 dark:text-blue-300">
+                  <p className="font-semibold mb-1">🎯 Automatic Platform Detection</p>
+                  <p>Share this ONE link everywhere! We automatically detect whether it's clicked from:</p>
+                  <div className="mt-2 grid grid-cols-2 gap-1">
+                    <span>📱 Instagram</span>
+                    <span>📘 Facebook</span>
+                    <span>🐦 Twitter</span>
+                    <span>💼 LinkedIn</span>
+                    <span>📌 Pinterest</span>
+                    <span>🎵 TikTok</span>
+                    <span>💬 WhatsApp</span>
+                    <span>📧 Email</span>
+                  </div>
+                  <p className="mt-2 text-blue-700 dark:text-blue-300">
+                    View detailed analytics in the Analytics tab to see which platforms perform best!
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Link Details */}
+          <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <span className="text-gray-600 dark:text-gray-400">Short Code:</span>
+              <span className="ml-2 font-mono font-semibold text-gray-900 dark:text-gray-100">
+                {createdLink.shortCode}
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-600 dark:text-gray-400">Campaign:</span>
+              <span className="ml-2 font-semibold text-gray-900 dark:text-gray-100">
+                {createdLink.campaign}
+              </span>
+            </div>
+            <div className="col-span-2">
+              <span className="text-gray-600 dark:text-gray-400">Target URL:</span>
+              <p className="mt-1 text-xs text-gray-700 dark:text-gray-300 break-all">
+                {createdLink.targetUrl}
+              </p>
+            </div>
           </div>
         </div>
       )}

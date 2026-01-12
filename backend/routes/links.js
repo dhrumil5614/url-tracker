@@ -99,20 +99,9 @@ router.post('/',
 
       await link.save();
 
-      // Build full short URLs for different platforms
+      // Build single standard short URL (platform is auto-detected on click)
       const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
       const shortUrl = `${baseUrl}/${shortCode}`;
-
-      // Build platform-specific URLs with UTM parameters
-      const buildPlatformUrl = (source) => {
-        const url = new URL(targetUrl);
-        if (utmSource || source) url.searchParams.set('utm_source', utmSource || source);
-        if (utmMedium) url.searchParams.set('utm_medium', utmMedium);
-        if (utmCampaign) url.searchParams.set('utm_campaign', utmCampaign);
-        if (utmContent) url.searchParams.set('utm_content', utmContent);
-
-        return `${baseUrl}/${shortCode}?source=${source}`;
-      };
 
       res.status(201).json({
         success: true,
@@ -121,15 +110,10 @@ router.post('/',
           shortUrl,
           targetUrl: link.targetUrl,
           campaign: link.campaign,
-          platformUrls: {
-            instagram: buildPlatformUrl('instagram'),
-            facebook: buildPlatformUrl('facebook'),
-            twitter: buildPlatformUrl('twitter'),
-            linkedin: buildPlatformUrl('linkedin'),
-            direct: shortUrl
-          },
           expiresAt: link.expiresAt,
-          createdAt: link.createdAt
+          createdAt: link.createdAt,
+          // Info message about automatic platform detection
+          message: 'Share this link anywhere - platform is automatically detected!'
         }
       });
 
