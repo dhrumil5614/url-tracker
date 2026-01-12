@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config(); // Load environment variables
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -8,19 +8,19 @@ const analyticsRouter = require('./routes/analytics');
 const { generalLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 /**
  * Database Connection
  */
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/link-tracker')
-.then(() => {
-  console.log('✓ Connected to MongoDB');
-})
-.catch((error) => {
-  console.error('✗ MongoDB connection error:', error);
-  process.exit(1);
-});
+  .then(() => {
+    console.log('✓ Connected to MongoDB');
+  })
+  .catch((error) => {
+    console.error('✗ MongoDB connection error:', error);
+    process.exit(1);
+  });
 
 // Handle MongoDB connection errors after initial connection
 mongoose.connection.on('error', (error) => {
@@ -84,20 +84,18 @@ app.use('/api/analytics', analyticsRouter);
 const Link = require('./models/Link');
 const Click = require('./models/Click');
 const { parseUserAgent, getLocationFromIP, getClientIP } = require('./utils/userAgentParser');
-const { detectPlatform } = require('./utils/platformDetector');
+const { detectSource } = require('./utils/sourceDetector');
 const { redirectLimiter } = require('./middleware/rateLimiter');
 
 app.get('/:shortCode', redirectLimiter, async (req, res, next) => {
   try {
     const { shortCode } = req.params;
 
-    // Automatic platform detection from HTTP headers
-    const referer = req.headers.referer || req.headers.referrer || '';
-    const userAgent = req.headers['user-agent'] || '';
-    const manualSource = req.query.source || req.query.utm_source || '';
-
-    // Detect platform automatically (supports manual override via query params)
-    const source = detectPlatform(referer, userAgent, manualSource);
+    // Determine source: Query param > Referer header > 'direct'
+    let source = req.query.source;
+    if (!source) {
+      source = detectSource(req.headers.referer || req.headers.referrer) || 'direct';
+    }
 
     // Skip if it looks like a system route
     if (shortCode === 'health' || shortCode === 'api' || shortCode === 'favicon.ico') {
